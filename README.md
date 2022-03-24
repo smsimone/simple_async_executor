@@ -5,7 +5,7 @@ Currently it supports only sequential execution, but in next releases it will be
 
 ## Usage
 
-To use this package you need to import it and create an instance of `Executor`:
+To use this package you need to import it:
 
 ```dart
 import 'package:simple_async_executor/simple_async_executor.dart';
@@ -27,10 +27,9 @@ final executor = BaseExecutor<void, void>(
 );
 ```
 
-and then run the executor:
+and then run the tasks defined:
 
 ```dart
-/// Runs all the tasks defined before
 executor.executeAll();
 
 /// Gets the result of the [AsyncTask] with the given id
