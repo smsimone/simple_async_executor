@@ -1,4 +1,4 @@
-# Symple async executor
+# Simple async executor
 
 This packages provides a simple API to handle asynchronous tasks.
 Currently it supports only sequential execution, but in next releases it will be extended to support also priority queues.
