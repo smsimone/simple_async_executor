@@ -12,6 +12,11 @@ typedef PriorityComparator<P> = int Function(P p1, P p2);
 /// [O] - Output type of the [PriorityTask]
 /// [P] - Priority type of the [PriorityTask]
 class PriorityExecutor<I, O, P> extends Executor<PriorityTask<I, O, P>, I, O> {
+  /// Creates a [Executor] that handles its waiting queue with a [PriorityPool]
+  ///
+  /// [I] - Input type of the [PriorityTask]
+  /// [O] - Output type of the [PriorityTask]
+  /// [P] - Priority type of the [PriorityTask]
   PriorityExecutor({
     List<PriorityTask<I, O, P>>? initialTasks,
     int maxConcurrentTasks = 1,

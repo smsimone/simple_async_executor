@@ -21,6 +21,30 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
 
   Semaphore get semaphore;
 
+  bool _launched = false;
+
+  /// Map of [Completer]s that are waiting for a task to be finished
+  final _completers = <int, Completer<O?>>{};
+
+  /// Returns `true` if the semaphore has some running tasks or some
+  /// waiting tasks
+  bool get isRunning =>
+      _launched && _completers.values.any((e) => !e.isCompleted);
+
+  /// Returns `true` if the [Executor] has finished all its jobs
+  bool get isDone =>
+      _launched && _completers.values.every((element) => element.isCompleted);
+
+  /// Returns the number of tasks that are currently running
+  int get runningTasks => semaphore.runningTasks;
+
+  /// Returns the number of tasks that are currently waiting
+  int get waitingTasks => semaphore.waitingTasks;
+
+  /// Returns when all the tasks are done
+  Future<void> get waitUntilDone =>
+      Future.wait(_completers.values.map((c) => c.future));
+
   /// Executes a single [taskId] and returns the [Future] that will complete
   /// when the task is finished
   Future<O?> executeWithResult(int taskId) {
@@ -46,9 +70,6 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
     if (execute) _execute(task.id);
   }
 
-  /// Map of [Completer]s that are waiting for a task to be finished
-  final _completers = <int, Completer<O?>>{};
-
   /// Executes a single [taskId]
   @mustCallSuper
   void execute(int taskId) => _execute(taskId);
@@ -64,6 +85,8 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
   /// the [_maxConcurrentTasks] parameter specified
   @mustCallSuper
   void executeAll() {
+    assert(!_launched);
+    _launched = true;
     for (final task in tasks) {
       _execute(task.id);
     }
@@ -81,10 +104,4 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
       taskId,
     );
   }
-
-  /// Returns the number of tasks that are currently running
-  int get runningTasks => semaphore.runningTasks;
-
-  /// Returns the number of tasks that are currently waiting
-  int get waitingTasks => semaphore.waitingTasks;
 }

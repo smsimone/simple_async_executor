@@ -4,6 +4,68 @@ import 'package:test/test.dart';
 
 void main() {
   group('Tests on base ececutor', () {
+    test('Executor is not running', () async {
+      final results = <int>[];
+
+      final executor = BaseExecutor<void, void>(
+        initialTasks: [
+          AsyncTask(1, (_) async => results.add(1)),
+          AsyncTask(2, (_) async => results.add(2)),
+          AsyncTask(3, (_) async => results.add(3)),
+        ],
+        maxConcurrentTasks: 3,
+      );
+
+      expect(executor.isRunning, isFalse);
+      expect(executor.isDone, isFalse);
+    });
+
+    test("Executor launched but still hasn't finished", () async {
+      final results = <int>[];
+
+      final executor = BaseExecutor<void, void>(
+        initialTasks: [
+          AsyncTask(1, (_) async => results.add(1)),
+          AsyncTask(2, (_) async {
+            await Future.delayed(const Duration(seconds: 2));
+            results.add(2);
+          }),
+          AsyncTask(3, (_) async => results.add(3)),
+        ],
+        maxConcurrentTasks: 3,
+      );
+
+      executor.executeAll();
+
+      expect(executor.isRunning, isTrue);
+      expect(executor.isDone, isFalse);
+    });
+
+    test('Executor launched -- wait until done', () async {
+      final results = <int>[];
+
+      final executor = BaseExecutor<void, void>(
+        initialTasks: [
+          AsyncTask(1, (_) async => results.add(1)),
+          AsyncTask(2, (_) async {
+            await Future.delayed(const Duration(seconds: 2));
+            results.add(2);
+          }),
+          AsyncTask(3, (_) async => results.add(3)),
+        ],
+        maxConcurrentTasks: 3,
+      );
+
+      executor.executeAll();
+
+      expect(executor.isRunning, isTrue);
+      expect(executor.isDone, isFalse);
+
+      await executor.waitUntilDone;
+      expect(executor.isRunning, isFalse);
+      expect(executor.isDone, isTrue);
+    });
+
     test('All tasks are run together', () async {
       final results = <int>[];
 

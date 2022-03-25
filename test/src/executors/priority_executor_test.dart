@@ -23,7 +23,7 @@ void main() {
       expect(results, [0, 1, 2]);
     });
 
-    test('All items have the same priority', () async {
+    test('All items have the same priority -- some tasks slower', () async {
       final results = <int>[];
 
       final executor = PriorityExecutor<void, void, int>(
