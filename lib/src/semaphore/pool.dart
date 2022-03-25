@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
 
 abstract class SemaphorePool<T> {
   /// Returns the amount of elements in the pool
@@ -23,6 +24,8 @@ abstract class SemaphorePool<T> {
 class BasicPool<T> extends SemaphorePool<T> {
   final _queue = ListQueue<T>();
 
+  final _executed = ListQueue<T>();
+
   @override
   void add(T element, [int? id]) {
     assert(!_queue.contains(element));
@@ -33,7 +36,11 @@ class BasicPool<T> extends SemaphorePool<T> {
   int get length => _queue.length;
 
   @override
-  T removeFirst() => _queue.removeFirst();
+  T removeFirst() {
+    final item = _queue.removeFirst();
+    _executed.add(item);
+    return item;
+  }
 }
 
 /// Implementation of [SemaphorePool] using a [PriorityQueue]
@@ -44,6 +51,7 @@ class PriorityPool<T, P> extends SemaphorePool<T> {
   }) : _queue = PriorityQueue<_PriorityWrapper<P, T>>(comparator);
 
   late final PriorityQueue<_PriorityWrapper<P, T>> _queue;
+  final _executed = ListQueue<int>();
 
   final P defaultPriority;
 
@@ -64,25 +72,46 @@ class PriorityPool<T, P> extends SemaphorePool<T> {
   int get length => _queue.length;
 
   @override
-  T removeFirst() => _queue.removeFirst().element;
+  T removeFirst() {
+    assert(_queue.isNotEmpty);
+    final element = _queue.removeFirst();
+    _executed.add(element.id);
+    return element.element;
+  }
 
   /// Changes the priority of the single element that matches the [selector]
-  void changePriority(bool Function(int itemId) selector, P priority) {
+  void changePriority(int itemId, P priority) {
     assert(
-      _queue.toList().where((element) => selector(element.id)).length == 1,
-      'The selector must match only one item',
+      () {
+        final itemsFound = [
+          ..._queue.toList().map((e) => e.id),
+          ..._executed.toList()
+        ].where((id) => id == itemId).length;
+
+        if (itemsFound != 1) {
+          debugPrint('Found $itemsFound items instead of one');
+          return false;
+        }
+        return true;
+      }(),
+      'The selector must match exactly one item',
     );
+
+    if (_executed.contains(itemId)) {
+      debugPrint('Item $itemId has already been executed');
+      return;
+    }
 
     final tempItems = _queue.toList();
 
-    tempItems.singleWhere((item) => selector(item.id)).priority = priority;
+    tempItems.singleWhere((item) => item.id == itemId).priority = priority;
 
     _queue
       ..clear()
       ..addAll(tempItems);
 
     assert(
-      _queue.toList().singleWhere((item) => selector(item.id)).priority ==
+      _queue.toList().singleWhere((item) => item.id == itemId).priority ==
           priority,
     );
   }
@@ -108,5 +137,5 @@ class _PriorityWrapper<P, T> {
 
   @override
   String toString() =>
-      '_PriorityWrapper{priority: $priority, element: $element}';
+      '_PriorityWrapper{id: $id, priority: $priority, element: $element}';
 }

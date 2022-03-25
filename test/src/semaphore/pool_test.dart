@@ -26,7 +26,7 @@ void main() {
       ['a', 'b', 'c'].forEach(pool.add);
 
       expect(pool.length, 3);
-      pool.changePriority((item) => item == 'a'.hashCode, 5);
+      pool.changePriority('a'.hashCode, 5);
       expect(pool.removeFirst(), 'a');
     });
   });

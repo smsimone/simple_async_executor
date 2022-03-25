@@ -44,13 +44,11 @@ class Semaphore {
   ///
   /// [function] is the function to be executed when the semaphore is available.
   Future<void> addToQueue(Function function, [int? id]) async {
+    _waiting.add(function, id);
     if (permits.value > 0) {
       permits.decrement();
-      _run(function);
       return;
     }
-
-    _waiting.add(function, id);
   }
 
   /// Listener for [permits].
@@ -60,12 +58,12 @@ class Semaphore {
     if (_waiting.isEmpty) {
       return;
     }
-
-    final function = _waiting.removeFirst();
-    _run(function);
+    _executeNext();
   }
 
-  void _run(Function function) {
+  /// Removes the first task from the waiting queue and executes it.
+  void _executeNext() {
+    final function = _waiting.removeFirst();
     _running.add(function);
     final res = function();
     if (res is Future) {

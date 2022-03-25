@@ -46,8 +46,36 @@ class PriorityExecutor<I, O, P> extends Executor<PriorityTask<I, O, P>, I, O> {
     assert(pool is PriorityPool);
     final task = tasks.firstWhere((t) => t.id == taskId);
     (pool as PriorityPool<Function, int>).changePriority(
-      (item) => item == task.id,
+      task.id,
       priority,
     );
+  }
+
+  /// Changes the priority of all tasks contained in [taskIds]
+  ///
+  /// The map should be in the form of:
+  /// ```json
+  /// {
+  ///   'priorityValue': [taskIds],
+  ///   ...
+  /// }
+  /// ```
+  void bulkChangePriority(Map<int, List<int>> taskIds) {
+    assert(
+      () {
+        final ids = taskIds.values.expand((element) => [...element]).toList();
+        final currentIds = tasks.map((t) => t.id).toList();
+
+        return ids.every((id) => currentIds.contains(id));
+      }(),
+      'There are some ids that are not in the tasks list',
+    );
+
+    for (final edit in taskIds.entries) {
+      final priority = edit.key;
+      for (final task in edit.value) {
+        changePriority(task, priority);
+      }
+    }
   }
 }
