@@ -2,6 +2,7 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:simple_async_executor/src/extensions/value_notifier_extension.dart';
+import 'package:simple_async_executor/src/semaphore/pool.dart';
 
 /// Posix-like semaphore implementation.
 class Semaphore {
@@ -10,14 +11,14 @@ class Semaphore {
   /// [waitingQueue] specifies the [Queue] implementation for the waiting queue.
   Semaphore(
     int permits, {
-    Queue<Function>? waitingQueue,
+    SemaphorePool<Function>? waitingQueue,
   })  : permits = ValueNotifier(permits),
-        _waiting = waitingQueue ?? ListQueue<Function>() {
+        _waiting = waitingQueue ?? BasicPool<Function>() {
     this.permits.addListener(_onPermitsChanged);
   }
 
   /// Queue of waiting tasks.
-  final Queue<Function> _waiting;
+  final SemaphorePool<Function> _waiting;
 
   /// Queue of running tasks
   final _running = ListQueue<Function>();
@@ -31,6 +32,9 @@ class Semaphore {
   /// Number of running tasks
   int get runningTasks => _running.length;
 
+  /// Returns the [SemaphorePool] that is used to store the waiting tasks.
+  SemaphorePool<Function> get waitingPool => _waiting;
+
   /// Increments the number of the [permits] by one.
   void _post() => permits.increment();
 
@@ -39,14 +43,14 @@ class Semaphore {
   /// If none is available, waits until one is available.
   ///
   /// [function] is the function to be executed when the semaphore is available.
-  Future<void> addToQueue(Function function) async {
+  Future<void> addToQueue(Function function, [int? id]) async {
     if (permits.value > 0) {
       permits.decrement();
       _run(function);
       return;
     }
 
-    _waiting.add(function);
+    _waiting.add(function, id);
   }
 
   /// Listener for [permits].
