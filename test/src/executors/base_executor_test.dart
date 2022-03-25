@@ -35,7 +35,7 @@ void main() {
         maxConcurrentTasks: 3,
       );
 
-      executor.executeAll();
+      executor.start();
 
       expect(executor.isRunning, isTrue);
       expect(executor.isDone, isFalse);
@@ -56,7 +56,7 @@ void main() {
         maxConcurrentTasks: 3,
       );
 
-      executor.executeAll();
+      executor.start();
 
       expect(executor.isRunning, isTrue);
       expect(executor.isDone, isFalse);
@@ -78,7 +78,7 @@ void main() {
         maxConcurrentTasks: 3,
       );
 
-      executor.executeAll();
+      executor.start();
 
       await Future.delayed(const Duration(milliseconds: 10));
       expect(executor.runningTasks, 0);
@@ -101,7 +101,7 @@ void main() {
         maxConcurrentTasks: 3,
       );
 
-      executor.executeAll();
+      executor.start();
 
       await Future.delayed(const Duration(milliseconds: 110));
       expect(executor.runningTasks, 0);
@@ -131,7 +131,7 @@ void main() {
         maxConcurrentTasks: 3,
       );
 
-      executor.executeAll();
+      executor.start();
 
       await Future.delayed(const Duration(milliseconds: 110));
       expect(executor.runningTasks, 3);
@@ -166,7 +166,7 @@ void main() {
         maxConcurrentTasks: 2,
       );
 
-      executor.executeAll();
+      executor.start();
 
       final result = await executor.getResult(3);
 
@@ -203,7 +203,7 @@ void main() {
         maxConcurrentTasks: 2,
       );
 
-      executor.executeAll();
+      executor.start();
 
       final result = await executor.getResult(1);
 
@@ -240,7 +240,7 @@ void main() {
         maxConcurrentTasks: 2,
       );
 
-      executor.executeAll();
+      executor.start();
 
       final result = await executor.getResult(1);
 
@@ -254,8 +254,6 @@ void main() {
       expect(executor.waitingTasks, 0);
       expect(results, [2, 3, 4, 1]);
 
-      final result2 = await executor.executeWithResult(5);
-      expect(result2, 5);
       expect(results, [2, 3, 4, 1, 5]);
     });
 
@@ -286,7 +284,7 @@ void main() {
         maxConcurrentTasks: 2,
       );
 
-      executor.executeAll();
+      executor.start();
       await Future.delayed(const Duration(milliseconds: 100));
       executor.addTask(
         AsyncTask(

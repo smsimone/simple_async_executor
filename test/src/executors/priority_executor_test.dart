@@ -15,11 +15,11 @@ void main() {
         maxConcurrentTasks: 2,
       );
 
-      executor.executeAll();
+      executor.start();
 
-      await Future.delayed(const Duration(milliseconds: 20));
+      await executor.waitUntilDone;
 
-      expect(results, [0, 1, 2]);
+      expect(results, [2, 1, 0]);
     });
 
     test('All items have the same priority -- some tasks slower', () async {
@@ -40,13 +40,13 @@ void main() {
         maxConcurrentTasks: 2,
       );
 
-      executor.executeAll();
+      executor.start();
 
       await Future.delayed(const Duration(milliseconds: 20));
 
-      expect(results, []);
+      expect(results, [2]);
       expect(executor.runningTasks, 2);
-      expect(executor.waitingTasks, 1);
+      expect(executor.waitingTasks, 0);
     });
 
     test('Edit priority of one task at runtime', () async {
@@ -54,14 +54,22 @@ void main() {
 
       final executor = PriorityExecutor<void, void, int>(
         initialTasks: [
-          PriorityTask(0, (_) async {
-            await Future.delayed(const Duration(milliseconds: 200));
-            results.add(0);
-          }, 0),
-          PriorityTask(1, (_) async {
-            await Future.delayed(const Duration(milliseconds: 250));
-            results.add(1);
-          }, 0),
+          PriorityTask(
+            0,
+            (_) async {
+              await Future.delayed(const Duration(milliseconds: 200));
+              results.add(0);
+            },
+            9,
+          ),
+          PriorityTask(
+            1,
+            (_) async {
+              await Future.delayed(const Duration(milliseconds: 250));
+              results.add(1);
+            },
+            9,
+          ),
           PriorityTask(2, (_) async => results.add(2), 0),
           PriorityTask(3, (_) async => results.add(3), 0),
           PriorityTask(4, (_) async => results.add(4), 0),
@@ -69,7 +77,7 @@ void main() {
         maxConcurrentTasks: 2,
       );
 
-      executor.executeAll();
+      executor.start();
 
       expect(results, []);
       expect(executor.runningTasks, 2);
@@ -78,7 +86,7 @@ void main() {
       executor.changePriority(4, 10);
 
       await Future.delayed(const Duration(milliseconds: 210));
-      expect(results.sublist(0, 2), [0, 4]);
+      expect(results, [1, 0, 4]);
     });
 
     test(
@@ -108,7 +116,7 @@ void main() {
 
         tasks.forEach(executor.addTask);
 
-        executor.executeAll();
+        executor.start();
 
         final edits = {
           10: tasks.where((t) => t.id.isEven).map((i) => i.id).toList(),
@@ -151,7 +159,7 @@ void main() {
 
         executor.bulkChangePriority(edits);
 
-        executor.executeAll();
+        executor.start();
         await executor.waitUntilDone;
 
         expect(results, [1, 3, 5, 7, 9, 2, 4, 6, 8]);

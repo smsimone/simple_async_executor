@@ -32,7 +32,9 @@ class PriorityExecutor<I, O, P> extends Executor<PriorityTask<I, O, P>, I, O> {
             (p1, p2) => p2.priority.compareTo(p1.priority),
             defaultPriority: 0,
           ),
-        );
+        ) {
+    registerTasks();
+  }
 
   @override
   final List<PriorityTask<I, O, P>> tasks;

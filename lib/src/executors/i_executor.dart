@@ -45,13 +45,6 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
   Future<void> get waitUntilDone =>
       Future.wait(_completers.values.map((c) => c.future));
 
-  /// Executes a single [taskId] and returns the [Future] that will complete
-  /// when the task is finished
-  Future<O?> executeWithResult(int taskId) {
-    execute(taskId);
-    return getResult(taskId);
-  }
-
   /// Adds a new [AsyncTask] to the [BaseExecutor]
   ///
   /// [task] is the [AsyncTask] to be added
@@ -67,12 +60,11 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
       tasks.add(task);
     }
 
-    if (execute) _execute(task.id);
+    _addToQueue(task.id);
   }
 
-  /// Executes a single [taskId]
-  @mustCallSuper
-  void execute(int taskId) => _execute(taskId);
+  @protected
+  void registerTasks() => tasks.map((t) => t.id).forEach(_addToQueue);
 
   /// Returns the [Future] that will complete when the task of [id] is finished
   @mustCallSuper
@@ -84,15 +76,14 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
   /// Executes all the [AsyncTask]s defined in the constructor with
   /// the [_maxConcurrentTasks] parameter specified
   @mustCallSuper
-  void executeAll() {
+  void start() {
     assert(!_launched);
+    assert(semaphore.waitingTasks > 0);
     _launched = true;
-    for (final task in tasks) {
-      _execute(task.id);
-    }
+    semaphore.start();
   }
 
-  void _execute(int taskId) {
+  void _addToQueue(int taskId) {
     assert(tasks.any((t) => t.id == taskId));
     _completers.putIfAbsent(taskId, () => Completer<O?>());
     final element = tasks.firstWhere((t) => t.id == taskId);

@@ -17,7 +17,9 @@ class BaseExecutor<I, O> extends Executor<AsyncTask<I, O>, I, O> {
                   initialTasks.length,
         ),
         tasks = initialTasks ?? [],
-        semaphore = Semaphore(maxConcurrentTasks);
+        semaphore = Semaphore(maxConcurrentTasks) {
+    registerTasks();
+  }
 
   @override
   final List<AsyncTask<I, O>> tasks;

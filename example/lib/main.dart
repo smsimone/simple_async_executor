@@ -56,7 +56,7 @@ class _ExampleState extends State<Example> {
           ),
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => _executor.executeAll(),
+          onPressed: () => _executor.start(),
           tooltip: 'Increment',
           child: const Icon(Icons.add),
         ),
