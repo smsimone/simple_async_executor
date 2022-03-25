@@ -1,6 +1,8 @@
 name: simple_async_executor
 description: Basic async executor for Dart and Flutter
 version: 0.0.1
+homepage: https://github.com/smsimone/simple_async_executor
+repository: https://github.com/smsimone/simple_async_executor
 
 environment:
   sdk: ">=2.16.1 <3.0.0"
