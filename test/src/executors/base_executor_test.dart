@@ -171,9 +171,9 @@ void main() {
       final result = await executor.getResult(3);
 
       expect(result, 3);
-      expect(executor.runningTasks, 2);
-      expect(executor.waitingTasks, 0);
-      expect(results, [2, 3, 4]);
+      expect(executor.runningTasks, 1);
+      expect(executor.waitingTasks, 1);
+      expect(results, [2, 3]);
     });
 
     test('Wait for the last result', () async {
@@ -240,21 +240,18 @@ void main() {
         maxConcurrentTasks: 2,
       );
 
-      executor.start();
-
-      final result = await executor.getResult(1);
-
       executor.addTask(AsyncTask(5, (_) async {
         results.add(5);
         return 5;
       }));
 
-      expect(result, 1);
       expect(executor.runningTasks, 0);
-      expect(executor.waitingTasks, 0);
-      expect(results, [2, 3, 4, 1]);
-
-      expect(results, [2, 3, 4, 1, 5]);
+      expect(executor.waitingTasks, 5);
+      executor.start();
+      await executor.getResult(1);
+      expect(results, [2, 3, 4, 5, 1]);
+      await executor.getResult(5);
+      expect(results, [2, 3, 4, 5, 1]);
     });
 
     test('Adds a task at runtime -- running tasks', () async {
@@ -294,8 +291,6 @@ void main() {
             return 5;
           },
         ),
-        index: 0,
-        execute: true,
       );
 
       final result = await executor.getResult(1);

@@ -21,19 +21,21 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
 
   Semaphore get semaphore;
 
-  bool _launched = false;
-
   /// Map of [Completer]s that are waiting for a task to be finished
   final _completers = <int, Completer<O?>>{};
+
+  /// Map of results of the completed [_completers]
+  final _results = <int, O?>{};
 
   /// Returns `true` if the semaphore has some running tasks or some
   /// waiting tasks
   bool get isRunning =>
-      _launched && _completers.values.any((e) => !e.isCompleted);
+      semaphore.isRunning && _completers.values.any((e) => !e.isCompleted);
 
   /// Returns `true` if the [Executor] has finished all its jobs
   bool get isDone =>
-      _launched && _completers.values.every((element) => element.isCompleted);
+      semaphore.isRunning &&
+      _completers.values.every((element) => element.isCompleted);
 
   /// Returns the number of tasks that are currently running
   int get runningTasks => semaphore.runningTasks;
@@ -50,16 +52,11 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
   /// [task] is the [AsyncTask] to be added
   /// [execute] is a [bool] that specifies if the task should be executed
   /// immediately or not
-  void addTask(T task, {int? index, bool execute = false}) {
+  void addTask(T task) {
     assert(!tasks.any((t) => t.id == task.id));
     _completers[task.id] = Completer<O>();
-
-    if (index != null) {
-      tasks.insert(index, task);
-    } else {
-      tasks.add(task);
-    }
-
+    tasks.add(task);
+    debugPrint('Adding task ${task.id} in queue');
     _addToQueue(task.id);
   }
 
@@ -70,6 +67,12 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
   @mustCallSuper
   Future<O?> getResult(int taskId) {
     assert(_completers.containsKey(taskId));
+    final completer = _completers[taskId]!;
+    if (completer.isCompleted) {
+      debugPrint('Task $taskId was already completed');
+      assert(_results[taskId] != null);
+      return Future.value(_results[taskId]);
+    }
     return _completers[taskId]!.future;
   }
 
@@ -77,9 +80,8 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
   /// the [_maxConcurrentTasks] parameter specified
   @mustCallSuper
   void start() {
-    assert(!_launched);
     assert(semaphore.waitingTasks > 0);
-    _launched = true;
+    assert(!isRunning);
     semaphore.start();
   }
 
@@ -87,12 +89,25 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
     assert(tasks.any((t) => t.id == taskId));
     _completers.putIfAbsent(taskId, () => Completer<O?>());
     final element = tasks.firstWhere((t) => t.id == taskId);
+    int? priority =
+        element is PriorityTask ? (element as PriorityTask).priority : null;
     semaphore.addToQueue(
       () async {
-        final res = await element.task(element.input);
-        _completers[element.id]!.complete(res);
+        final res = await element.task(element.input).onError(
+          (error, stackTrace) {
+            _completers[element.id]!.completeError(error ?? '', stackTrace);
+            return null;
+          },
+        );
+
+        if (!_completers[element.id]!.isCompleted) {
+          _completers[element.id]!.complete(res);
+          _results[element.id] = res;
+        }
       },
       taskId,
+      priority,
     );
+    debugPrint('Added task $taskId in queue');
   }
 }

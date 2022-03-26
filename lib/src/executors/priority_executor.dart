@@ -11,14 +11,14 @@ typedef PriorityComparator<P> = int Function(P p1, P p2);
 /// [I] - Input type of the [PriorityTask]
 /// [O] - Output type of the [PriorityTask]
 /// [P] - Priority type of the [PriorityTask]
-class PriorityExecutor<I, O, P> extends Executor<PriorityTask<I, O, P>, I, O> {
+class PriorityExecutor<I, O> extends Executor<PriorityTask<I, O>, I, O> {
   /// Creates a [Executor] that handles its waiting queue with a [PriorityPool]
   ///
   /// [I] - Input type of the [PriorityTask]
   /// [O] - Output type of the [PriorityTask]
   /// [P] - Priority type of the [PriorityTask]
   PriorityExecutor({
-    List<PriorityTask<I, O, P>>? initialTasks,
+    List<PriorityTask<I, O>>? initialTasks,
     int maxConcurrentTasks = 1,
   })  : assert(
           initialTasks == null ||
@@ -28,16 +28,27 @@ class PriorityExecutor<I, O, P> extends Executor<PriorityTask<I, O, P>, I, O> {
         tasks = initialTasks ?? [],
         semaphore = Semaphore(
           maxConcurrentTasks,
-          waitingQueue: PriorityPool<Function, int>(
+          waitingQueue: PriorityPool<Function>(
             (p1, p2) => p2.priority.compareTo(p1.priority),
             defaultPriority: 0,
           ),
         ) {
     registerTasks();
+
+    assert(() {
+      if (initialTasks == null) {
+        return true;
+      }
+      return semaphore.waitingPool.items.every(
+        (pElem) =>
+            pElem.priority ==
+            initialTasks.firstWhere((qElem) => qElem.id == pElem.id).priority,
+      );
+    }());
   }
 
   @override
-  final List<PriorityTask<I, O, P>> tasks;
+  final List<PriorityTask<I, O>> tasks;
   @override
   final Semaphore semaphore;
 
@@ -47,7 +58,7 @@ class PriorityExecutor<I, O, P> extends Executor<PriorityTask<I, O, P>, I, O> {
     final pool = semaphore.waitingPool;
     assert(pool is PriorityPool);
     final task = tasks.firstWhere((t) => t.id == taskId);
-    (pool as PriorityPool<Function, int>).changePriority(
+    (pool as PriorityPool<Function>).changePriority(
       task.id,
       priority,
     );

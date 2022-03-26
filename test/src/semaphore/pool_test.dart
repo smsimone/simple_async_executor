@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group('Priority pool', () {
     test('Items with the same priority', () {
-      final pool = PriorityPool<String, int>(
+      final pool = PriorityPool<String>(
         (a, b) => a.priority.compareTo(b.priority),
         defaultPriority: 0,
       );
@@ -18,7 +18,7 @@ void main() {
     });
 
     test('Change item priority', () {
-      final pool = PriorityPool<String, int>(
+      final pool = PriorityPool<String>(
         (a, b) => b.priority.compareTo(a.priority),
         defaultPriority: 0,
       );

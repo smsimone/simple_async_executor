@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:simple_async_executor/simple_async_executor.dart';
 import 'package:test/test.dart';
 
@@ -6,7 +7,7 @@ void main() {
     test('All items have the same priority', () async {
       final results = <int>[];
 
-      final executor = PriorityExecutor<void, void, int>(
+      final executor = PriorityExecutor<void, void>(
         initialTasks: [
           PriorityTask(0, (_) async => results.add(0), 0),
           PriorityTask(1, (_) async => results.add(1), 0),
@@ -25,7 +26,7 @@ void main() {
     test('All items have the same priority -- some tasks slower', () async {
       final results = <int>[];
 
-      final executor = PriorityExecutor<void, void, int>(
+      final executor = PriorityExecutor<void, void>(
         initialTasks: [
           PriorityTask(0, (_) async {
             await Future.delayed(const Duration(milliseconds: 200));
@@ -52,12 +53,14 @@ void main() {
     test('Edit priority of one task at runtime', () async {
       final results = <int>[];
 
-      final executor = PriorityExecutor<void, void, int>(
+      final executor = PriorityExecutor<void, void>(
         initialTasks: [
           PriorityTask(
             0,
             (_) async {
+              debugPrint('Waiting for task 0');
               await Future.delayed(const Duration(milliseconds: 200));
+              debugPrint('Ran task 0');
               results.add(0);
             },
             9,
@@ -65,14 +68,37 @@ void main() {
           PriorityTask(
             1,
             (_) async {
+              debugPrint('Waiting for task 1');
               await Future.delayed(const Duration(milliseconds: 250));
+              debugPrint('Ran task 1');
               results.add(1);
             },
             9,
           ),
-          PriorityTask(2, (_) async => results.add(2), 0),
-          PriorityTask(3, (_) async => results.add(3), 0),
-          PriorityTask(4, (_) async => results.add(4), 0),
+          PriorityTask(
+            2,
+            (_) async {
+              debugPrint('Ran task 2');
+              results.add(2);
+            },
+            0,
+          ),
+          PriorityTask(
+            3,
+            (_) async {
+              debugPrint('Ran task 3');
+              results.add(3);
+            },
+            0,
+          ),
+          PriorityTask(
+            4,
+            (_) async {
+              debugPrint('Ran task 4');
+              results.add(4);
+            },
+            0,
+          ),
         ],
         maxConcurrentTasks: 2,
       );
@@ -80,6 +106,8 @@ void main() {
       executor.start();
 
       expect(results, []);
+      debugPrint('---First assert done');
+      await Future.delayed(const Duration(milliseconds: 60));
       expect(executor.runningTasks, 2);
       expect(executor.waitingTasks, 3);
 
@@ -108,7 +136,7 @@ void main() {
           ),
         );
 
-        final executor = PriorityExecutor<void, void, int>(
+        final executor = PriorityExecutor<void, void>(
           maxConcurrentTasks: 3,
         );
 
@@ -144,7 +172,7 @@ void main() {
           ),
         );
 
-        final executor = PriorityExecutor<void, void, int>(
+        final executor = PriorityExecutor<void, void>(
           maxConcurrentTasks: 3,
         );
 

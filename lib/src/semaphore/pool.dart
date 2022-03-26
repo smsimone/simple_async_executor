@@ -14,10 +14,16 @@ abstract class SemaphorePool<T> {
   ///
   /// If the [id] is required (as in the case of [PriorityPool]) but it's not
   /// defined, it will be the [element]s hashCode
-  void add(T element, [int? id]);
+  void add(T element, [int? id, int? priority]);
 
   /// Remove the first element from the pool
   T removeFirst();
+
+  /// Returns the items contained in the [SemaphorePool]
+  ///
+  /// In case of a [BasicPool], the [_PriorityWrapper] items will all have
+  /// a [_PriorityWrapper.id] of `-1` and a [_PriorityWrapper.priority] of `0`
+  List<_PriorityWrapper<T>> get items;
 }
 
 /// Basic implementation with of [SemaphorePool] using a [ListQueue]
@@ -27,7 +33,7 @@ class BasicPool<T> extends SemaphorePool<T> {
   final _executed = ListQueue<T>();
 
   @override
-  void add(T element, [int? id]) {
+  void add(T element, [int? id, int? priority]) {
     assert(!_queue.contains(element));
     _queue.add(element);
   }
@@ -37,35 +43,38 @@ class BasicPool<T> extends SemaphorePool<T> {
 
   @override
   T removeFirst() {
+    assert(_queue.isNotEmpty);
     final item = _queue.removeFirst();
     _executed.add(item);
     return item;
   }
+
+  @override
+  List<_PriorityWrapper<T>> get items =>
+      _queue.toList().map((i) => _PriorityWrapper(-1, 0, i)).toList();
 }
 
 /// Implementation of [SemaphorePool] using a [PriorityQueue]
-class PriorityPool<T, P> extends SemaphorePool<T> {
+class PriorityPool<T> extends SemaphorePool<T> {
   PriorityPool(
-    Comparator<_PriorityWrapper<P, T>> comparator, {
-    required this.defaultPriority,
-  }) : _queue = PriorityQueue<_PriorityWrapper<P, T>>(comparator);
+    Comparator<_PriorityWrapper<T>> comparator, {
+    this.defaultPriority = 0,
+  }) : _queue = PriorityQueue<_PriorityWrapper<T>>(comparator);
 
-  late final PriorityQueue<_PriorityWrapper<P, T>> _queue;
+  late final PriorityQueue<_PriorityWrapper<T>> _queue;
   final _executed = ListQueue<int>();
 
-  final P defaultPriority;
+  final int defaultPriority;
 
   @override
-  void add(T element, [int? id]) {
-    if (defaultPriority != null) {
-      _queue.add(
-        _PriorityWrapper(
-          id ?? element.hashCode,
-          defaultPriority!,
-          element,
-        ),
-      );
-    }
+  void add(T element, [int? id, int? priority]) {
+    _queue.add(
+      _PriorityWrapper(
+        id ?? element.hashCode,
+        priority ?? defaultPriority,
+        element,
+      ),
+    );
   }
 
   @override
@@ -75,12 +84,15 @@ class PriorityPool<T, P> extends SemaphorePool<T> {
   T removeFirst() {
     assert(_queue.isNotEmpty);
     final element = _queue.removeFirst();
+    debugPrint(
+      'Removing element with id: ${element.id} and priority: ${element.priority}',
+    );
     _executed.add(element.id);
     return element.element;
   }
 
   /// Changes the priority of the single element that matches the [selector]
-  void changePriority(int itemId, P priority) {
+  void changePriority(int itemId, int priority) {
     assert(
       () {
         final itemsFound = [
@@ -115,14 +127,17 @@ class PriorityPool<T, P> extends SemaphorePool<T> {
           priority,
     );
   }
+
+  @override
+  List<_PriorityWrapper<T>> get items => _queue.toList();
 }
 
-class _PriorityWrapper<P, T> {
+class _PriorityWrapper<T> {
   _PriorityWrapper(this.id, this.priority, this.element);
 
   /// The id that identifies the task to change its priority
   int id;
-  P priority;
+  int priority;
   final T element;
 
   @override

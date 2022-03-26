@@ -2,7 +2,7 @@ import 'package:simple_async_executor/simple_async_executor.dart';
 
 /// A task that includes also a value [P] of priority to reorganize
 /// the tasks in runtime
-class PriorityTask<I, O, P> extends AsyncTask<I, O> {
+class PriorityTask<I, O> extends AsyncTask<I, O> {
   PriorityTask(
     int id,
     AsyncTaskCallback<I, O> task,
@@ -10,7 +10,7 @@ class PriorityTask<I, O, P> extends AsyncTask<I, O> {
     I? input,
   ]) : super(id, task, input);
 
-  final P priority;
+  final int priority;
 
   @override
   String toString() => 'PriorityTask{id: $id, input: $input}';
@@ -18,7 +18,7 @@ class PriorityTask<I, O, P> extends AsyncTask<I, O> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PriorityTask<I, O, P> &&
+      other is PriorityTask<I, O> &&
           runtimeType == other.runtimeType &&
           super == other;
 
