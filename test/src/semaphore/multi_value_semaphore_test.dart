@@ -7,9 +7,9 @@ void main() {
       final semaphore = Semaphore(5);
 
       final results = <int>[];
-      semaphore.addToQueue(() => results.add(1));
-      semaphore.addToQueue(() => results.add(2));
-      semaphore.addToQueue(() => results.add(3));
+      semaphore.addToQueue(() => results.add(1), 1);
+      semaphore.addToQueue(() => results.add(2), 2);
+      semaphore.addToQueue(() => results.add(3), 3);
 
       expect(results, isEmpty);
 
@@ -23,12 +23,15 @@ void main() {
       final semaphore = Semaphore(2);
 
       final results = <int>[];
-      semaphore.addToQueue(() => results.add(1));
-      semaphore.addToQueue(() async {
-        await Future.delayed(const Duration(seconds: 2));
-        results.add(2);
-      });
-      semaphore.addToQueue(() => results.add(3));
+      semaphore.addToQueue(() => results.add(1), 1);
+      semaphore.addToQueue(
+        () async {
+          await Future.delayed(const Duration(seconds: 2));
+          results.add(2);
+        },
+        2,
+      );
+      semaphore.addToQueue(() => results.add(3), 3);
 
       expect(results, isEmpty);
 
@@ -45,12 +48,12 @@ void main() {
       final semaphore = Semaphore(1);
 
       final results = <int>[];
-      semaphore.addToQueue(() => results.add(1));
+      semaphore.addToQueue(() => results.add(1), 1);
       semaphore.addToQueue(() async {
         await Future.delayed(const Duration(seconds: 2));
         results.add(2);
-      });
-      semaphore.addToQueue(() => results.add(3));
+      }, 2);
+      semaphore.addToQueue(() => results.add(3), 3);
 
       expect(results, isEmpty);
 

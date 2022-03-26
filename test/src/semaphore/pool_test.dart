@@ -12,9 +12,9 @@ void main() {
       ['a', 'b', 'c'].forEach(pool.add);
 
       expect(pool.length, 3);
-      expect(pool.removeFirst(), 'c');
-      expect(pool.removeFirst(), 'b');
-      expect(pool.removeFirst(), 'a');
+      expect(pool.removeFirst().item, 'c');
+      expect(pool.removeFirst().item, 'b');
+      expect(pool.removeFirst().item, 'a');
     });
 
     test('Change item priority', () {
@@ -27,7 +27,7 @@ void main() {
 
       expect(pool.length, 3);
       pool.changePriority('a'.hashCode, 5);
-      expect(pool.removeFirst(), 'a');
+      expect(pool.removeFirst().item, 'a');
     });
   });
 }

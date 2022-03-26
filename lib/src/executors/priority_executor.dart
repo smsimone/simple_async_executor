@@ -1,22 +1,18 @@
 import 'package:simple_async_executor/simple_async_executor.dart';
 import 'package:simple_async_executor/src/executors/i_executor.dart';
+import 'package:simple_async_executor/src/semaphore/element_wrapper.dart';
 import 'package:simple_async_executor/src/semaphore/multi_value_semaphore.dart';
 import 'package:simple_async_executor/src/semaphore/pool.dart';
-
-/// Comparator to sort the [PriorityTask]s by their priority.
-typedef PriorityComparator<P> = int Function(P p1, P p2);
 
 /// Creates a [Executor] that handles its waiting queue with a [PriorityPool]
 ///
 /// [I] - Input type of the [PriorityTask]
 /// [O] - Output type of the [PriorityTask]
-/// [P] - Priority type of the [PriorityTask]
 class PriorityExecutor<I, O> extends Executor<PriorityTask<I, O>, I, O> {
   /// Creates a [Executor] that handles its waiting queue with a [PriorityPool]
   ///
   /// [I] - Input type of the [PriorityTask]
   /// [O] - Output type of the [PriorityTask]
-  /// [P] - Priority type of the [PriorityTask]
   PriorityExecutor({
     List<PriorityTask<I, O>>? initialTasks,
     int maxConcurrentTasks = 1,
@@ -40,9 +36,15 @@ class PriorityExecutor<I, O> extends Executor<PriorityTask<I, O>, I, O> {
         return true;
       }
       return semaphore.waitingPool.items.every(
-        (pElem) =>
-            pElem.priority ==
-            initialTasks.firstWhere((qElem) => qElem.id == pElem.id).priority,
+        (pElem) {
+          if (pElem is! PriorityElementWrapper) {
+            throw Exception(
+              'Expected PriorityElementWrapper but instead is ${pElem.runtimeType}',
+            );
+          }
+          return (pElem as PriorityElementWrapper).priority ==
+              initialTasks.firstWhere((qElem) => qElem.id == pElem.id).priority;
+        },
       );
     }());
   }

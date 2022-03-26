@@ -32,7 +32,7 @@ class Semaphore {
   final SemaphorePool<Function> _waiting;
 
   /// Queue of running tasks
-  final _running = ListQueue<Function>();
+  final _running = ListQueue<int>();
 
   /// Number of permits allowed at the same time
   ///
@@ -53,7 +53,7 @@ class Semaphore {
   /// If none is available, waits until one is available.
   ///
   /// [function] is the function to be executed when the semaphore is available.
-  Future<void> addToQueue(Function function, [int? id, int? priority]) async {
+  Future<void> addToQueue(Function function, int id, [int? priority]) async {
     _waiting.add(function, id, priority);
     if (_isRunning) _onPermitsChanged();
   }
@@ -96,16 +96,17 @@ class Semaphore {
     assert(_permits.value >= 0);
     assert(_running.length <= _maxPermits);
     if (_waiting.isEmpty) return;
-    final function = _waiting.removeFirst();
-    _running.add(function);
-    final res = function();
+    final element = _waiting.removeFirst();
+    _running.add(element.id);
+    debugPrint('Semaphore started task ${element.id}');
+    final res = element.item();
     if (res is Future) {
       res.then((_) {
-        _running.remove(function);
+        _running.remove(element.id);
         _post();
       });
     } else {
-      _running.remove(function);
+      _running.remove(element.id);
       _post();
     }
   }

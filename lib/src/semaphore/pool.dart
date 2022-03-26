@@ -2,6 +2,7 @@ import 'dart:collection';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:simple_async_executor/src/semaphore/element_wrapper.dart';
 
 abstract class SemaphorePool<T> {
   /// Returns the amount of elements in the pool
@@ -14,35 +15,36 @@ abstract class SemaphorePool<T> {
   ///
   /// If the [id] is required (as in the case of [PriorityPool]) but it's not
   /// defined, it will be the [element]s hashCode
-  void add(T element, [int? id, int? priority]);
+  void add(T element, int id, [int? priority]);
 
   /// Remove the first element from the pool
-  T removeFirst();
+  ElementWrapper<T> removeFirst();
 
   /// Returns the items contained in the [SemaphorePool]
   ///
   /// In case of a [BasicPool], the [_PriorityWrapper] items will all have
-  /// a [_PriorityWrapper.id] of `-1` and a [_PriorityWrapper.priority] of `0`
-  List<_PriorityWrapper<T>> get items;
+  /// a [ElementWrapper.id] of `-1` and a [PriorityElementWrapper.priority] of `0`
+  List<ElementWrapper<T>> get items;
 }
 
 /// Basic implementation with of [SemaphorePool] using a [ListQueue]
 class BasicPool<T> extends SemaphorePool<T> {
-  final _queue = ListQueue<T>();
+  final _queue = ListQueue<ElementWrapper<T>>();
 
-  final _executed = ListQueue<T>();
+  final _executed = ListQueue<ElementWrapper<T>>();
 
   @override
-  void add(T element, [int? id, int? priority]) {
+  void add(T element, int id, [int? priority]) {
     assert(!_queue.contains(element));
-    _queue.add(element);
+
+    _queue.add(ElementWrapper(id, element));
   }
 
   @override
   int get length => _queue.length;
 
   @override
-  T removeFirst() {
+  ElementWrapper<T> removeFirst() {
     assert(_queue.isNotEmpty);
     final item = _queue.removeFirst();
     _executed.add(item);
@@ -50,18 +52,17 @@ class BasicPool<T> extends SemaphorePool<T> {
   }
 
   @override
-  List<_PriorityWrapper<T>> get items =>
-      _queue.toList().map((i) => _PriorityWrapper(-1, 0, i)).toList();
+  List<ElementWrapper<T>> get items => _queue.toList();
 }
 
 /// Implementation of [SemaphorePool] using a [PriorityQueue]
 class PriorityPool<T> extends SemaphorePool<T> {
   PriorityPool(
-    Comparator<_PriorityWrapper<T>> comparator, {
+    Comparator<PriorityElementWrapper<T>> comparator, {
     this.defaultPriority = 0,
-  }) : _queue = PriorityQueue<_PriorityWrapper<T>>(comparator);
+  }) : _queue = PriorityQueue<PriorityElementWrapper<T>>(comparator);
 
-  late final PriorityQueue<_PriorityWrapper<T>> _queue;
+  late final PriorityQueue<PriorityElementWrapper<T>> _queue;
   final _executed = ListQueue<int>();
 
   final int defaultPriority;
@@ -69,10 +70,10 @@ class PriorityPool<T> extends SemaphorePool<T> {
   @override
   void add(T element, [int? id, int? priority]) {
     _queue.add(
-      _PriorityWrapper(
+      PriorityElementWrapper(
         id ?? element.hashCode,
-        priority ?? defaultPriority,
         element,
+        priority ?? defaultPriority,
       ),
     );
   }
@@ -81,14 +82,14 @@ class PriorityPool<T> extends SemaphorePool<T> {
   int get length => _queue.length;
 
   @override
-  T removeFirst() {
+  ElementWrapper<T> removeFirst() {
     assert(_queue.isNotEmpty);
     final element = _queue.removeFirst();
     debugPrint(
       'Removing element with id: ${element.id} and priority: ${element.priority}',
     );
     _executed.add(element.id);
-    return element.element;
+    return element;
   }
 
   /// Changes the priority of the single element that matches the [selector]
@@ -129,28 +130,5 @@ class PriorityPool<T> extends SemaphorePool<T> {
   }
 
   @override
-  List<_PriorityWrapper<T>> get items => _queue.toList();
-}
-
-class _PriorityWrapper<T> {
-  _PriorityWrapper(this.id, this.priority, this.element);
-
-  /// The id that identifies the task to change its priority
-  int id;
-  int priority;
-  final T element;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is _PriorityWrapper &&
-          runtimeType == other.runtimeType &&
-          element == other.element;
-
-  @override
-  int get hashCode => element.hashCode;
-
-  @override
-  String toString() =>
-      '_PriorityWrapper{id: $id, priority: $priority, element: $element}';
+  List<PriorityElementWrapper<T>> get items => _queue.toList();
 }

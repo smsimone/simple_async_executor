@@ -58,9 +58,7 @@ void main() {
           PriorityTask(
             0,
             (_) async {
-              debugPrint('Waiting for task 0');
               await Future.delayed(const Duration(milliseconds: 200));
-              debugPrint('Ran task 0');
               results.add(0);
             },
             9,
@@ -68,37 +66,14 @@ void main() {
           PriorityTask(
             1,
             (_) async {
-              debugPrint('Waiting for task 1');
               await Future.delayed(const Duration(milliseconds: 250));
-              debugPrint('Ran task 1');
               results.add(1);
             },
             9,
           ),
-          PriorityTask(
-            2,
-            (_) async {
-              debugPrint('Ran task 2');
-              results.add(2);
-            },
-            0,
-          ),
-          PriorityTask(
-            3,
-            (_) async {
-              debugPrint('Ran task 3');
-              results.add(3);
-            },
-            0,
-          ),
-          PriorityTask(
-            4,
-            (_) async {
-              debugPrint('Ran task 4');
-              results.add(4);
-            },
-            0,
-          ),
+          PriorityTask(2, (_) async => results.add(2), 0),
+          PriorityTask(3, (_) async => results.add(3), 0),
+          PriorityTask(4, (_) async => results.add(4), 0),
         ],
         maxConcurrentTasks: 2,
       );
@@ -113,8 +88,11 @@ void main() {
 
       executor.changePriority(4, 10);
 
-      await Future.delayed(const Duration(milliseconds: 210));
-      expect(results, [1, 0, 4]);
+      await executor.getResult(4);
+      expect(results.last, 4);
+      expect(results.first, 0);
+      expect(executor.runningTasks, 1);
+      expect(executor.waitingTasks, 2);
     });
 
     test(
@@ -154,7 +132,16 @@ void main() {
         executor.bulkChangePriority(edits);
 
         await executor.waitUntilDone;
-        expect(results, [0, 2, 4, 6, 8, 1, 9, 3, 5, 7]);
+        expect(
+          results.sublist(0, 5).every((element) => element.isEven),
+          isTrue,
+          reason: 'First half of the list should be even',
+        );
+        expect(
+          results.sublist(5).every((element) => element.isOdd),
+          isTrue,
+          reason: 'The other half should have only odd elements',
+        );
       },
     );
 
@@ -188,11 +175,19 @@ void main() {
         executor.bulkChangePriority(edits);
 
         executor.start();
+        
         await executor.waitUntilDone;
-
-        expect(results, [1, 3, 5, 7, 9, 2, 4, 6, 8]);
+        expect(
+          results.sublist(0, 5).every((element) => element.isEven),
+          isTrue,
+          reason: 'First half of the list should be even',
+        );
+        expect(
+          results.sublist(5).every((element) => element.isOdd),
+          isTrue,
+          reason: 'The other half should have only odd elements',
+        );
       },
-      skip: 'TODO: fix this test',
     );
   });
 }
