@@ -7,11 +7,11 @@ void main() {
     test('All items have the same priority', () async {
       final results = <int>[];
 
-      final executor = PriorityExecutor<void, void>(
+      final executor = PriorityExecutor<void>(
         initialTasks: [
-          PriorityTask(0, (_) async => results.add(0), 0),
-          PriorityTask(1, (_) async => results.add(1), 0),
-          PriorityTask(2, (_) async => results.add(2), 0),
+          PriorityTask(0, () async => results.add(0), 0),
+          PriorityTask(1, () async => results.add(1), 0),
+          PriorityTask(2, () async => results.add(2), 0),
         ],
         maxConcurrentTasks: 2,
       );
@@ -26,17 +26,17 @@ void main() {
     test('All items have the same priority -- some tasks slower', () async {
       final results = <int>[];
 
-      final executor = PriorityExecutor<void, void>(
+      final executor = PriorityExecutor<void>(
         initialTasks: [
-          PriorityTask(0, (_) async {
+          PriorityTask(0, () async {
             await Future.delayed(const Duration(milliseconds: 200));
             results.add(0);
           }, 0),
-          PriorityTask(1, (_) async {
+          PriorityTask(1, () async {
             await Future.delayed(const Duration(milliseconds: 200));
             results.add(1);
           }, 0),
-          PriorityTask(2, (_) async => results.add(2), 0),
+          PriorityTask(2, () async => results.add(2), 0),
         ],
         maxConcurrentTasks: 2,
       );
@@ -53,11 +53,11 @@ void main() {
     test('Edit priority of one task at runtime', () async {
       final results = <int>[];
 
-      final executor = PriorityExecutor<void, void>(
+      final executor = PriorityExecutor<void>(
         initialTasks: [
           PriorityTask(
             0,
-            (_) async {
+            () async {
               await Future.delayed(const Duration(milliseconds: 200));
               results.add(0);
             },
@@ -65,15 +65,15 @@ void main() {
           ),
           PriorityTask(
             1,
-            (_) async {
+            () async {
               await Future.delayed(const Duration(milliseconds: 250));
               results.add(1);
             },
             9,
           ),
-          PriorityTask(2, (_) async => results.add(2), 0),
-          PriorityTask(3, (_) async => results.add(3), 0),
-          PriorityTask(4, (_) async => results.add(4), 0),
+          PriorityTask(2, () async => results.add(2), 0),
+          PriorityTask(3, () async => results.add(3), 0),
+          PriorityTask(4, () async => results.add(4), 0),
         ],
         maxConcurrentTasks: 2,
       );
@@ -89,10 +89,10 @@ void main() {
       executor.changePriority(4, 10);
 
       await executor.getResult(4);
-      expect(results.last, 4);
       expect(results.first, 0);
-      expect(executor.runningTasks, 1);
-      expect(executor.waitingTasks, 2);
+      expect(results[1], 4);
+      expect(executor.runningTasks, 2);
+      expect(executor.waitingTasks, 1);
     });
 
     test(
@@ -104,7 +104,7 @@ void main() {
           10,
           (index) => PriorityTask(
             index.hashCode,
-            (_) async {
+            () async {
               if (index.isOdd) {
                 await Future.delayed(const Duration(milliseconds: 200));
               }
@@ -114,7 +114,7 @@ void main() {
           ),
         );
 
-        final executor = PriorityExecutor<void, void>(
+        final executor = PriorityExecutor<void>(
           maxConcurrentTasks: 3,
         );
 
@@ -154,12 +154,12 @@ void main() {
           10,
           (index) => PriorityTask(
             index.hashCode,
-            (_) async => results.add(index),
+            () async => results.add(index),
             0,
           ),
         );
 
-        final executor = PriorityExecutor<void, void>(
+        final executor = PriorityExecutor<void>(
           maxConcurrentTasks: 3,
         );
 
@@ -175,7 +175,7 @@ void main() {
         executor.bulkChangePriority(edits);
 
         executor.start();
-        
+
         await executor.waitUntilDone;
         expect(
           results.sublist(0, 5).every((element) => element.isEven),

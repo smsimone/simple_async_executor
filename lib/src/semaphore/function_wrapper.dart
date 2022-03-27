@@ -1,15 +1,17 @@
+typedef AsyncFunction<T> = Future<T> Function();
+
 /// Class that wraps an element with its id
-class ElementWrapper<T> {
+class FunctionWrapper<T> {
   /// Class that wraps an element with its id
-  ElementWrapper(this.id, this.item);
+  FunctionWrapper(this.id, this.item);
 
   final int id;
-  final T item;
+  final AsyncFunction<T> item;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ElementWrapper && item == other.item && id == other.id;
+      other is FunctionWrapper<T> && item == other.item && id == other.id;
 
   @override
   int get hashCode => item.hashCode;
@@ -18,12 +20,12 @@ class ElementWrapper<T> {
   String toString() => 'ElementWrapper{id: $id, element: $item}';
 }
 
-/// Extension of [ElementWrapper] that adds a priority
-class PriorityElementWrapper<T> extends ElementWrapper<T> {
-  /// Extension of [ElementWrapper] that adds a priority
+/// Extension of [FunctionWrapper] that adds a priority
+class PriorityElementWrapper<T> extends FunctionWrapper<T> {
+  /// Extension of [FunctionWrapper] that adds a priority
   PriorityElementWrapper(
     int id,
-    T element,
+    AsyncFunction<T> element,
     this.priority,
   ) : super(id, element);
 
@@ -32,7 +34,7 @@ class PriorityElementWrapper<T> extends ElementWrapper<T> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PriorityElementWrapper &&
+      other is PriorityElementWrapper<T> &&
           item == other.item &&
           id == other.id &&
           priority == other.priority;

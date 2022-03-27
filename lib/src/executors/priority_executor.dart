@@ -1,20 +1,18 @@
 import 'package:simple_async_executor/simple_async_executor.dart';
 import 'package:simple_async_executor/src/executors/i_executor.dart';
-import 'package:simple_async_executor/src/semaphore/element_wrapper.dart';
+import 'package:simple_async_executor/src/semaphore/function_wrapper.dart';
 import 'package:simple_async_executor/src/semaphore/multi_value_semaphore.dart';
 import 'package:simple_async_executor/src/semaphore/pool.dart';
 
 /// Creates a [Executor] that handles its waiting queue with a [PriorityPool]
 ///
-/// [I] - Input type of the [PriorityTask]
 /// [O] - Output type of the [PriorityTask]
-class PriorityExecutor<I, O> extends Executor<PriorityTask<I, O>, I, O> {
+class PriorityExecutor<O> extends Executor<O> {
   /// Creates a [Executor] that handles its waiting queue with a [PriorityPool]
   ///
-  /// [I] - Input type of the [PriorityTask]
   /// [O] - Output type of the [PriorityTask]
   PriorityExecutor({
-    List<PriorityTask<I, O>>? initialTasks,
+    List<PriorityTask<O>>? initialTasks,
     int maxConcurrentTasks = 1,
   })  : assert(
           initialTasks == null ||
@@ -24,13 +22,11 @@ class PriorityExecutor<I, O> extends Executor<PriorityTask<I, O>, I, O> {
         tasks = initialTasks ?? [],
         semaphore = Semaphore(
           maxConcurrentTasks,
-          waitingQueue: PriorityPool<Function>(
+          waitingQueue: PriorityPool<O>(
             (p1, p2) => p2.priority.compareTo(p1.priority),
             defaultPriority: 0,
           ),
         ) {
-    registerTasks();
-
     assert(() {
       if (initialTasks == null) {
         return true;
@@ -42,7 +38,7 @@ class PriorityExecutor<I, O> extends Executor<PriorityTask<I, O>, I, O> {
               'Expected PriorityElementWrapper but instead is ${pElem.runtimeType}',
             );
           }
-          return (pElem as PriorityElementWrapper).priority ==
+          return pElem.priority ==
               initialTasks.firstWhere((qElem) => qElem.id == pElem.id).priority;
         },
       );
@@ -50,7 +46,8 @@ class PriorityExecutor<I, O> extends Executor<PriorityTask<I, O>, I, O> {
   }
 
   @override
-  final List<PriorityTask<I, O>> tasks;
+  final List<PriorityTask<O>> tasks;
+
   @override
   final Semaphore semaphore;
 
@@ -60,7 +57,7 @@ class PriorityExecutor<I, O> extends Executor<PriorityTask<I, O>, I, O> {
     final pool = semaphore.waitingPool;
     assert(pool is PriorityPool);
     final task = tasks.firstWhere((t) => t.id == taskId);
-    (pool as PriorityPool<Function>).changePriority(
+    (pool as PriorityPool<O>).changePriority(
       task.id,
       priority,
     );

@@ -17,18 +17,18 @@ class Example extends StatefulWidget {
 class _ExampleState extends State<Example> {
   final _stream = StreamController<int>.broadcast();
 
-  final _executor = BaseExecutor<void, void>(
+  final _executor = BaseExecutor<void>(
     maxConcurrentTasks: 1,
   );
 
   @override
   void initState() {
     super.initState();
-    <AsyncTask<void, void>>[
-      AsyncTask(0, (_) async => _stream.add(0)),
-      AsyncTask(1, (_) async => _stream.add(1)),
-      AsyncTask(2, (_) async => _stream.add(1)),
-      AsyncTask(3, (_) async => _stream.add(1)),
+    <AsyncTask<void>>[
+      AsyncTask(0, () async => _stream.add(0)),
+      AsyncTask(1, () async => _stream.add(1)),
+      AsyncTask(2, () async => _stream.add(1)),
+      AsyncTask(3, () async => _stream.add(1)),
     ].forEach(_executor.addTask);
   }
 

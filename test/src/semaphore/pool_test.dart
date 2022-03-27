@@ -3,31 +3,35 @@ import 'package:test/test.dart';
 
 void main() {
   group('Priority pool', () {
-    test('Items with the same priority', () {
+    test('Items with the same priority', () async {
       final pool = PriorityPool<String>(
         (a, b) => a.priority.compareTo(b.priority),
         defaultPriority: 0,
       );
 
-      ['a', 'b', 'c'].forEach(pool.add);
+      for (var i in ['a', 'b', 'c']) {
+        pool.add(() async => i);
+      }
 
       expect(pool.length, 3);
-      expect(pool.removeFirst().item, 'c');
-      expect(pool.removeFirst().item, 'b');
-      expect(pool.removeFirst().item, 'a');
+      expect(await pool.removeFirst().item(), 'c');
+      expect(await pool.removeFirst().item(), 'b');
+      expect(await pool.removeFirst().item(), 'a');
     });
 
-    test('Change item priority', () {
+    test('Change item priority', () async {
       final pool = PriorityPool<String>(
         (a, b) => b.priority.compareTo(a.priority),
         defaultPriority: 0,
       );
 
-      ['a', 'b', 'c'].forEach(pool.add);
+      for (var i in ['a', 'b', 'c']) {
+        pool.add(() async => i, i.hashCode);
+      }
 
       expect(pool.length, 3);
       pool.changePriority('a'.hashCode, 5);
-      expect(pool.removeFirst().item, 'a');
+      expect(await pool.removeFirst().item(), 'a');
     });
   });
 }

@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:collection';
 
+import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:simple_async_executor/src/extensions/value_notifier_extension.dart';
+import 'package:simple_async_executor/src/semaphore/function_wrapper.dart';
 import 'package:simple_async_executor/src/semaphore/pool.dart';
 
 /// Posix-like semaphore implementation.
@@ -11,14 +14,16 @@ class Semaphore {
   /// [waitingQueue] specifies the [Queue] implementation for the waiting queue.
   Semaphore(
     this._maxPermits, {
-    SemaphorePool<Function>? waitingQueue,
+    SemaphorePool? waitingQueue,
   })  : assert(_maxPermits >= 1),
-        _permits = ValueNotifier(-1),
-        _waiting = waitingQueue ?? BasicPool<Function>() {
+        _permits = ValueNotifier(-1) {
+    _waiting = waitingQueue ?? BasicPool();
     _permits.addListener(_onPermitsChanged);
   }
 
   bool _isRunning = false;
+
+  bool _isDisposed = false;
 
   /// Flag that specifies is current [Semaphore] is running or not
   ///
@@ -29,10 +34,17 @@ class Semaphore {
   final int _maxPermits;
 
   /// Queue of waiting tasks.
-  final SemaphorePool<Function> _waiting;
+  late final SemaphorePool _waiting;
 
-  /// Queue of running tasks
-  final _running = ListQueue<int>();
+  /// Stream on which will be publicated the completed tasks
+  final _completedTasksStream =
+      StreamController<MapEntry<int, dynamic>>.broadcast();
+
+  /// Map of current running tasks with their [CancelableOperation]
+  final _running = <int, CancelableOperation>{};
+
+  /// Counter that keeps the number of completed tasks of the [Semaphore]
+  var _tasksCompleted = 0;
 
   /// Number of permits allowed at the same time
   ///
@@ -45,15 +57,29 @@ class Semaphore {
   /// Number of running tasks
   int get runningTasks => _running.length;
 
+  /// Returns the number of completed tasks of the [Semaphore]
+  int get completedTasks => _tasksCompleted;
+
+  /// Returns `true` if the semaphore was disposed
+  bool get isDisposed {
+    assert(!_isDisposed || _running.isEmpty);
+    assert(!_isDisposed || _waiting.isEmpty);
+    return _isDisposed;
+  }
+
   /// Returns the [SemaphorePool] that is used to store the waiting tasks.
-  SemaphorePool<Function> get waitingPool => _waiting;
+  SemaphorePool get waitingPool => _waiting;
 
   /// Decrements the number of [_permits] by one.
   ///
   /// If none is available, waits until one is available.
   ///
   /// [function] is the function to be executed when the semaphore is available.
-  Future<void> addToQueue(Function function, int id, [int? priority]) async {
+  Future<void> addToQueue(
+    AsyncFunction function,
+    int id, [
+    int? priority,
+  ]) async {
     _waiting.add(function, id, priority);
     if (_isRunning) _onPermitsChanged();
   }
@@ -64,6 +90,14 @@ class Semaphore {
     assert(_permits.value == -1);
     _isRunning = true;
     _permits.value = _maxPermits;
+  }
+
+  /// Disposes the [Semaphore] and closes all the running tasks
+  void dispose() {
+    _isDisposed = true;
+    _running.forEach((key, value) => value.cancel());
+    _running.clear();
+    _waiting.clear();
   }
 
   /// Listener for [_permits].
@@ -97,17 +131,21 @@ class Semaphore {
     assert(_running.length <= _maxPermits);
     if (_waiting.isEmpty) return;
     final element = _waiting.removeFirst();
-    _running.add(element.id);
+
     debugPrint('Semaphore started task ${element.id}');
-    final res = element.item();
-    if (res is Future) {
-      res.then((_) {
-        _running.remove(element.id);
-        _post();
-      });
-    } else {
+    final operation =
+        CancelableOperation.fromFuture(element.item()).then((result) {
+      _tasksCompleted++;
       _running.remove(element.id);
+      _completedTasksStream.sink.add(MapEntry(element.id, result));
+      debugPrint('Task ${element.id} has completed');
       _post();
-    }
+    });
+    _running[element.id] = operation;
+    assert(_running.length <= _maxPermits);
   }
+
+  /// Returns the [Stream] on which are publicated the completed tasks
+  Stream<MapEntry<int, dynamic>> onTaskCompleted() =>
+      _completedTasksStream.stream;
 }
