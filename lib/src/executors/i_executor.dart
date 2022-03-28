@@ -16,8 +16,13 @@ import 'package:simple_async_executor/src/tasks/tasks.dart';
 /// - [BaseExecutor] which uses a normal FIFO queue
 /// - [PriorityExecutor] which use a [HeapPriorityQueue] to store the
 ///   [PriorityTask]s that has to be run
-abstract class Executor<T extends AsyncTask<I, O>, I, O> {
-  List<T> get tasks;
+abstract class Executor<O> {
+  Executor() {
+    registerTasks();
+    _registerListener();
+  }
+
+  List<AsyncTask<O>> get tasks;
 
   Semaphore get semaphore;
 
@@ -26,6 +31,9 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
 
   /// Map of results of the completed [_completers]
   final _results = <int, O?>{};
+
+  /// Flag that indicates if the executor is disposed or not
+  var _isClosed = false;
 
   /// Returns `true` if the semaphore has some running tasks or some
   /// waiting tasks
@@ -47,12 +55,21 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
   Future<void> get waitUntilDone =>
       Future.wait(_completers.values.map((c) => c.future));
 
+  /// Registers the listener on [semaphore] to receive the completed
+  /// tasks and their results
+  void _registerListener() {
+    semaphore.onTaskCompleted().listen((event) {
+      assert(_completers[event.key] != null);
+      assert(!_completers[event.key]!.isCompleted);
+      _completers[event.key]!.complete(event.value as O?);
+      _results[event.key] = event.value as O?;
+    });
+  }
+
   /// Adds a new [AsyncTask] to the [BaseExecutor]
   ///
   /// [task] is the [AsyncTask] to be added
-  /// [execute] is a [bool] that specifies if the task should be executed
-  /// immediately or not
-  void addTask(T task) {
+  void addTask(AsyncTask<O> task) {
     assert(!tasks.any((t) => t.id == task.id));
     _completers[task.id] = Completer<O>();
     tasks.add(task);
@@ -62,6 +79,12 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
 
   @protected
   void registerTasks() => tasks.map((t) => t.id).forEach(_addToQueue);
+
+  /// Closes all the running [AsyncTask]s and disposes the [Executor]
+  void dispose() {
+    _isClosed = true;
+    semaphore.dispose();
+  }
 
   /// Returns the [Future] that will complete when the task of [id] is finished
   @mustCallSuper
@@ -91,23 +114,7 @@ abstract class Executor<T extends AsyncTask<I, O>, I, O> {
     final element = tasks.firstWhere((t) => t.id == taskId);
     int? priority =
         element is PriorityTask ? (element as PriorityTask).priority : null;
-    semaphore.addToQueue(
-      () async {
-        final res = await element.task(element.input).onError(
-          (error, stackTrace) {
-            _completers[element.id]!.completeError(error ?? '', stackTrace);
-            return null;
-          },
-        );
-
-        if (!_completers[element.id]!.isCompleted) {
-          _completers[element.id]!.complete(res);
-          _results[element.id] = res;
-        }
-      },
-      taskId,
-      priority,
-    );
+    semaphore.addToQueue(element.task, taskId, priority);
     debugPrint('Added task $taskId in queue');
   }
 }
