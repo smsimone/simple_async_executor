@@ -35,6 +35,9 @@ abstract class Executor<O> {
   /// Flag that indicates if the executor is disposed or not
   var _isClosed = false;
 
+  /// Returns `true` if [Executor.dispose] was called
+  bool get isDisposed => _isClosed;
+
   /// Returns `true` if the semaphore has some running tasks or some
   /// waiting tasks
   bool get isRunning =>
@@ -70,6 +73,7 @@ abstract class Executor<O> {
   ///
   /// [task] is the [AsyncTask] to be added
   void addTask(AsyncTask<O> task) {
+    assert(!_isClosed);
     assert(!tasks.any((t) => t.id == task.id));
     _completers[task.id] = Completer<O>();
     tasks.add(task);
@@ -82,6 +86,7 @@ abstract class Executor<O> {
 
   /// Closes all the running [AsyncTask]s and disposes the [Executor]
   void dispose() {
+    assert(!_isClosed, 'Executor was already disposed');
     _isClosed = true;
     semaphore.dispose();
   }
@@ -103,6 +108,7 @@ abstract class Executor<O> {
   /// the [_maxConcurrentTasks] parameter specified
   @mustCallSuper
   void start() {
+    assert(!_isClosed);
     assert(semaphore.waitingTasks > 0);
     assert(!isRunning);
     semaphore.start();

@@ -301,4 +301,24 @@ void main() {
       expect(results, [2, 3, 4, 5, 1]);
     });
   });
+
+  test('Add task to a disposed executor', () {
+    final executor = BaseExecutor(
+      initialTasks: [
+        AsyncTask(
+          1,
+          () async => await Future.delayed(const Duration(seconds: 3)),
+        )
+      ],
+    );
+
+    expect(executor.isDisposed, isFalse);
+    executor.addTask(AsyncTask(2, () async => null));
+    executor.dispose();
+    expect(executor.isDisposed, isTrue);
+    try {
+      executor.addTask(AsyncTask(2, () async => null));
+      fail('Expected an exception');
+    } catch (_) {}
+  });
 }
